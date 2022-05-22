@@ -13,13 +13,27 @@ end
 -- Create a detached inventory
 local inv_everything = minetest.create_detached_inventory("everything", {
 	allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
-		return 0
+		if not minetest.check_player_privs(player, 'give') or
+				to_list == "main" then
+			return 0
+		end
+		return count
 	end,
 	allow_put = function(inv, listname, index, stack, player)
 		return 0
 	end,
 	allow_take = function(inv, listname, index, stack, player)
+		if not minetest.check_player_privs(player, 'give') then
+			return 0
+		end
 		return -1
+	end,
+	on_move = function(inv, from_list, from_index, to_list, to_index, count, player2)
+	end,
+	on_take = function(inv, listname, index, stack, player2)
+		if stack and stack:get_count() > 0 then
+
+		end
 	end,
 })
 local inv_trash = minetest.create_detached_inventory("trash", {
@@ -62,6 +76,7 @@ local function get_chest_formspec(page)
 		listring[detached:everything;main]
 		listring[current_player;main]
 		listring[detached:trash;main]
+		field[-10,-10;0,0;internal_paginator;;${page}]
 	]], {
 		start = start,
 		page = page,
@@ -81,28 +96,32 @@ minetest.register_node("chest_with_everything:chest", {
 		sheet(1), sheet(2)},
 	paramtype2 = "facedir",
 	groups = {dig_immediate=2,choppy=3},
-	on_construct = function(pos)
-		local meta = minetest.get_meta(pos)
-		meta:set_int("page", 1)
-		meta:set_string("formspec", get_chest_formspec(1))
-	end,
-	on_receive_fields = function(pos, formname, fields, sender)
-		if formname ~= "" then return end
-
-		local meta = minetest.get_meta(pos)
-		local page = meta:get_int("page")
-
-		if fields.cwe_prev then		page = page - 1
-		elseif fields.cwe_next then	page = page + 1 end
-
-		-- Wrap-around
-		if page < 1 then page = max_page end
-		if page > max_page then page = 1 end
-
-		meta:set_int("page", page)
-		meta:set_string("formspec", get_chest_formspec(page))
-	end,
+	on_rightclick = function(pos, node, clicker)
+		local player_name = clicker:get_player_name()
+		if not minetest.check_player_privs(clicker, 'give') and false then
+			minetest.chat_send_player(player_name, minetest.colorize("#ff0000", "Hey, no touching!"))
+			minetest.log("action", player_name.." tried to access a Chest with Everything")
+			return
+		end
+		minetest.show_formspec(clicker:get_player_name(), "chest_with_everything:chest", get_chest_formspec(1))
+	end
 })
+
+minetest.register_on_player_receive_fields(function(player, formname, fields)
+	if formname ~= "chest_with_everything:chest" then return end
+	if fields.cwe_prev == nil and fields.cwe_next == nil then return end
+
+	local page = fields.internal_paginator
+
+	if fields.cwe_prev then		page = page - 1
+	elseif fields.cwe_next then	page = page + 1 end
+
+	-- Wrap-around
+	if page < 1 then page = max_page end
+	if page > max_page then page = 1 end
+
+	minetest.show_formspec(player:get_player_name(), "chest_with_everything:chest", get_chest_formspec(page))
+end)
 
 minetest.register_on_mods_loaded(function()
 	local items = {}
