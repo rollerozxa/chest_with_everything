@@ -1,0 +1,4 @@
+
+#	Enables also showing items with the 'not_in_creative_inventory'
+#	group in the Chest of Everything
+cwe_show_nici (Show 'not_in_creative_inventory') bool false

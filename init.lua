@@ -52,6 +52,8 @@ inv_trash:set_size("main", 1)
 local max_page = 1
 local items_per_page = 60
 
+local show_nici = minetest.settings:get("cwe_show_nici") or false
+
 local function get_chest_formspec(page)
 	local start = 0 + ( page - 1 ) * items_per_page
 
@@ -126,12 +128,7 @@ end)
 minetest.register_on_mods_loaded(function()
 	local items = {}
 	for itemstring, def in pairs(minetest.registered_items) do
-		if itemstring ~= ""
-		and itemstring ~= "unknown"
-		and itemstring ~= "ignore"
-		and itemstring ~= "air"
-		and itemstring ~= "worldedit:placeholder"
-		and def.groups.not_in_creative_inventory ~= 1 then
+		if def.groups.not_in_creative_inventory ~= 1 or show_nici then
 			table.insert(items, itemstring)
 		end
 	end
