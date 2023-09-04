@@ -10,10 +10,16 @@ local function formspec_wrapper(formspec, variables)
 	return retval
 end
 
+-- Declare custom permission
+minetest.register_privilege("chest_with_everything", {
+	description = "Can use the chest_with_everything",
+	give_to_singleplayer = true
+})
+
 -- Create a detached inventory
 local inv_everything = minetest.create_detached_inventory("everything", {
 	allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
-		if not minetest.check_player_privs(player, 'give') or
+		if not minetest.check_player_privs(player, 'chest_with_everything') or
 				to_list == "main" then
 			return 0
 		end
@@ -23,7 +29,7 @@ local inv_everything = minetest.create_detached_inventory("everything", {
 		return 0
 	end,
 	allow_take = function(inv, listname, index, stack, player)
-		if not minetest.check_player_privs(player, 'give') then
+		if not minetest.check_player_privs(player, 'chest_with_everything') then
 			return 0
 		end
 		return -1
@@ -100,7 +106,7 @@ minetest.register_node("chest_with_everything:chest", {
 	groups = {dig_immediate=2,choppy=3},
 	on_rightclick = function(pos, node, clicker)
 		local player_name = clicker:get_player_name()
-		if not minetest.check_player_privs(clicker, 'give') and false then
+		if not minetest.check_player_privs(clicker, 'chest_with_everything') and false then
 			minetest.chat_send_player(player_name, minetest.colorize("#ff0000", "Hey, no touching!"))
 			minetest.log("action", player_name.." tried to access a Chest with Everything")
 			return
