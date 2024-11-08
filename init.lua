@@ -11,9 +11,9 @@ local function formspec_wrapper(formspec, variables)
 end
 
 -- Create a detached inventory
-local inv_everything = minetest.create_detached_inventory("everything", {
+local inv_everything = core.create_detached_inventory("everything", {
 	allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
-		if not minetest.check_player_privs(player, 'give') or
+		if not core.check_player_privs(player, 'give') or
 				to_list == "main" then
 			return 0
 		end
@@ -23,7 +23,7 @@ local inv_everything = minetest.create_detached_inventory("everything", {
 		return 0
 	end,
 	allow_take = function(inv, listname, index, stack, player)
-		if not minetest.check_player_privs(player, 'give') then
+		if not core.check_player_privs(player, 'give') then
 			return 0
 		end
 		return -1
@@ -36,7 +36,7 @@ local inv_everything = minetest.create_detached_inventory("everything", {
 		end
 	end,
 })
-local inv_trash = minetest.create_detached_inventory("trash", {
+local inv_trash = core.create_detached_inventory("trash", {
 	allow_take = function(inv, listname, index, stack, player)
 		return 0
 	end,
@@ -52,7 +52,7 @@ inv_trash:set_size("main", 1)
 local max_page = 1
 local items_per_page = 60
 
-local show_nici = minetest.settings:get("cwe_show_nici") or false
+local show_nici = core.settings:get("cwe_show_nici") or false
 
 local function get_chest_formspec(page)
 	local start = 0 + ( page - 1 ) * items_per_page
@@ -90,7 +90,7 @@ local function sheet(id)
 	return "chest_with_everything.png^[sheet:2x2:"..(id % 2)..","..math.floor(id / 2)
 end
 
-minetest.register_node("chest_with_everything:chest", {
+core.register_node("chest_with_everything:chest", {
 	description = "Chest with Everything",
 	tiles = {
 		sheet(0), sheet(0),
@@ -100,16 +100,16 @@ minetest.register_node("chest_with_everything:chest", {
 	groups = {dig_immediate=2,choppy=3},
 	on_rightclick = function(pos, node, clicker)
 		local player_name = clicker:get_player_name()
-		if not minetest.check_player_privs(clicker, 'give') and false then
-			minetest.chat_send_player(player_name, minetest.colorize("#ff0000", "Hey, no touching!"))
-			minetest.log("action", player_name.." tried to access a Chest with Everything")
+		if not core.check_player_privs(clicker, 'give') and false then
+			core.chat_send_player(player_name, core.colorize("#ff0000", "Hey, no touching!"))
+			core.log("action", player_name.." tried to access a Chest with Everything")
 			return
 		end
-		minetest.show_formspec(clicker:get_player_name(), "chest_with_everything:chest", get_chest_formspec(1))
+		core.show_formspec(clicker:get_player_name(), "chest_with_everything:chest", get_chest_formspec(1))
 	end
 })
 
-minetest.register_on_player_receive_fields(function(player, formname, fields)
+core.register_on_player_receive_fields(function(player, formname, fields)
 	if formname ~= "chest_with_everything:chest" then return end
 	if fields.cwe_prev == nil and fields.cwe_next == nil then return end
 
@@ -122,12 +122,12 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if page < 1 then page = max_page end
 	if page > max_page then page = 1 end
 
-	minetest.show_formspec(player:get_player_name(), "chest_with_everything:chest", get_chest_formspec(page))
+	core.show_formspec(player:get_player_name(), "chest_with_everything:chest", get_chest_formspec(page))
 end)
 
-minetest.register_on_mods_loaded(function()
+core.register_on_mods_loaded(function()
 	local items = {}
-	for itemstring, def in pairs(minetest.registered_items) do
+	for itemstring, def in pairs(core.registered_items) do
 		if def.groups.not_in_creative_inventory ~= 1 or show_nici then
 			table.insert(items, itemstring)
 		end
@@ -139,8 +139,8 @@ minetest.register_on_mods_loaded(function()
 	* Craftitems
 	* Other items ]]
 	local function compare(item1, item2)
-		local def1 = minetest.registered_items[item1]
-		local def2 = minetest.registered_items[item2]
+		local def1 = core.registered_items[item1]
+		local def2 = core.registered_items[item2]
 		local tool1 = def1.type == "tool"
 		local tool2 = def2.type == "tool"
 		local craftitem1 = def1.type == "craft"
