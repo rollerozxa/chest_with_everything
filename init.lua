@@ -1,63 +1,40 @@
 
 -- Simple formspec wrapper that does variable substitution.
-local function formspec_wrapper(formspec, variables)
-	local retval = formspec
-
+local function substitute(formspec, variables)
 	for k,v in pairs(variables) do
-		retval = retval:gsub("${"..k.."}", v)
+		formspec = formspec:gsub("${"..k.."}", v)
 	end
-
-	return retval
+	return formspec
 end
 
--- Create a detached inventory
 local inv_everything = core.create_detached_inventory("everything", {
-	allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
-		if not core.check_player_privs(player, 'give') or
-				to_list == "main" then
-			return 0
-		end
-		return count
-	end,
-	allow_put = function(inv, listname, index, stack, player)
-		return 0
-	end,
+	allow_move = function() return 0 end,
+	allow_put = function() return 0 end,
 	allow_take = function(inv, listname, index, stack, player)
-		if not core.check_player_privs(player, 'give') then
-			return 0
+		if core.check_player_privs(player, 'give') then
+			return -1
 		end
-		return -1
-	end,
-	on_move = function(inv, from_list, from_index, to_list, to_index, count, player2)
-	end,
-	on_take = function(inv, listname, index, stack, player2)
-		if stack and stack:get_count() > 0 then
-
-		end
+		return 0
 	end,
 })
 local inv_trash = core.create_detached_inventory("trash", {
-	allow_take = function(inv, listname, index, stack, player)
-		return 0
-	end,
-	allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
-		return 0
-	end,
+	allow_move = function() return 0 end,
+	allow_take = function() return 0 end,
 	on_put = function(inv, listname, index, stack, player)
-		inv:set_list("main", {})
+		inv:set_list(listname, {})
 	end,
 })
 inv_trash:set_size("main", 1)
 
 local max_page = 1
-local items_per_page = 60
+local items_per_page = 12*5
 
 local show_nici = core.settings:get("cwe_show_nici") or false
 
 local function get_chest_formspec(page)
-	local start = 0 + ( page - 1 ) * items_per_page
+	local start = ( page - 1 ) * items_per_page
 
-	return formspec_wrapper([[
+	return substitute([[
 		formspec_version[4]
 		size[15.7,10.5]
 
@@ -99,21 +76,23 @@ core.register_node("chest_with_everything:chest", {
 	paramtype2 = "facedir",
 	groups = {dig_immediate=2,choppy=3},
 	on_rightclick = function(pos, node, clicker)
-		local player_name = clicker:get_player_name()
+		local name = clicker:get_player_name()
 		if not core.check_player_privs(clicker, 'give') and false then
-			core.chat_send_player(player_name, core.colorize("#ff0000", "Hey, no touching!"))
-			core.log("action", player_name.." tried to access a Chest with Everything")
+			core.chat_send_player(name, core.colorize("#ff0000", "Hey, no touching!"))
+			core.log("action", name.." tried to access a Chest with Everything")
 			return
 		end
-		core.show_formspec(clicker:get_player_name(), "chest_with_everything:chest", get_chest_formspec(1))
+		core.show_formspec(name, "chest_with_everything:chest", get_chest_formspec(1))
 	end
 })
 
 core.register_on_player_receive_fields(function(player, formname, fields)
 	if formname ~= "chest_with_everything:chest" then return end
-	if fields.cwe_prev == nil and fields.cwe_next == nil then return end
+	if not fields.cwe_prev and not fields.cwe_next then return end
 
-	local page = fields.internal_paginator
+	local page = tonumber(fields.internal_paginator)
+	if not page then return end
+	page = math.floor(page)
 
 	if fields.cwe_prev then		page = page - 1
 	elseif fields.cwe_next then	page = page + 1 end
@@ -127,36 +106,43 @@ end)
 
 core.register_on_mods_loaded(function()
 	local items = {}
-	for itemstring, def in pairs(core.registered_items) do
-		if def.groups.not_in_creative_inventory ~= 1 or show_nici then
-			table.insert(items, itemstring)
+	for name, def in pairs(core.registered_items) do
+		if (def.groups.not_in_creative_inventory or 0) == 0 or show_nici then
+			items[#items+1] = name
 		end
 	end
-	--[[ Sort items in this order:
+	--[[ If built-in grouping is on, sort items into these groups:
 	* Chest with Everything
-	* Test tools
-	* Other tools
+	* Tools
 	* Craftitems
-	* Other items ]]
+	* Other items
+	Then always by the 'order' property of their definitions,
+	and finally their item IDs. ]]
+	local grouping = core.settings:get_bool("cwe_built_in_grouping", true)
 	local function compare(item1, item2)
 		local def1 = core.registered_items[item1]
 		local def2 = core.registered_items[item2]
-		local tool1 = def1.type == "tool"
-		local tool2 = def2.type == "tool"
-		local craftitem1 = def1.type == "craft"
-		local craftitem2 = def2.type == "craft"
-		if item1 == "chest_with_everything:chest" then
-			return true
-		elseif item2 == "chest_with_everything:chest" then
-			return false
-		elseif tool1 and not tool2 then
-			return true
-		elseif not tool1 and tool2 then
-			return false
-		elseif craftitem1 and not craftitem2 then
-			return true
-		elseif not craftitem1 and craftitem2 then
-			return false
+
+		if grouping then
+			local tool1 = def1.type == "tool"
+			local tool2 = def2.type == "tool"
+			local craftitem1 = def1.type == "craft"
+			local craftitem2 = def2.type == "craft"
+			if     item1 == "chest_with_everything:chest" then return true
+			elseif item2 == "chest_with_everything:chest" then return false
+			elseif     tool1 and not tool2 then return true
+			elseif not tool1 and     tool2 then return false
+			elseif     craftitem1 and not craftitem2 then return true
+			elseif not craftitem1 and     craftitem2 then return false
+			end
+		end
+		
+		local order1 = def1.order
+		local order2 = def2.order
+		if order1 and order2 then
+			return order1 < order2
+		elseif order1 then return true
+		elseif order2 then return false
 		else
 			return item1 < item2
 		end
