@@ -3,4 +3,4 @@ Lightweight and game-agnostic mod which adds a chest node containing every singl
 
 By default, it doesn't show items with the `not_in_creative_inventory` group, which primarily contains technical items and nodes. If you do want to show them, there is a setting to override this behaviour.
 
-Based off of Development Test's "Chest of Everything" mod.
+Originally based off of Development Test's "Chest of Everything" mod, but has seen significant modifications done to it since.

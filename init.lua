@@ -136,7 +136,7 @@ core.register_on_mods_loaded(function()
 			elseif not craftitem1 and     craftitem2 then return false
 			end
 		end
-		
+
 		local order1 = def1.order
 		local order2 = def2.order
 		if order1 and order2 then
